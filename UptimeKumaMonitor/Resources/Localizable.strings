@@ -1,0 +1,61 @@
+// Lokalisation für Uptime Kuma Monitor App
+// German (de)
+
+// MARK: - Navigation & General
+"navigationTitle" = "Uptime Kuma";
+"settingsTitle" = "Einstellungen";
+"done" = "Fertig";
+"cancel" = "Abbrechen";
+"refresh" = "Aktualisieren";
+"settings" = "Einstellungen";
+
+// MARK: - Settings View
+"serverURL" = "Server URL";
+"username" = "Benutzername";
+"password" = "Passwort";
+"connect" = "Verbinden";
+"connecting" = "Verbindung wird hergestellt...";
+"showPassword" = "Passwort anzeigen";
+
+// MARK: - Monitor Section
+"monitors" = "Monitore";
+"status" = "Status";
+"lastUpdated" = "Zuletzt aktualisiert:";
+
+// MARK: - Monitor Details
+"monitorStatus" = "Status";
+"uptime" = "Uptime";
+"details" = "Details";
+"url" = "URL";
+"type" = "Typ";
+"httpMethod" = "HTTP-Methode";
+"description" = "Beschreibung";
+"lastCheck" = "Letzte Prüfung";
+"timestamp" = "Zeitstempel";
+
+// MARK: - Status Indicators
+"statusUp" = "UP";
+"statusDown" = "DOWN";
+"serviceUp" = "✅ Service ist verfügbar";
+"serviceDown" = "❌ Service ist nicht verfügbar";
+
+// MARK: - Error Messages
+"errorTitle" = "Fehler";
+"invalidURL" = "Ungültige URL";
+"loginFailed" = "Login fehlgeschlagen: %@";
+"failedFetchMonitors" = "Fehler beim Abrufen der Monitore: %@";
+"serverError" = "Server hat einen Fehler zurückgegeben";
+"noData" = "Keine Daten empfangen";
+"decodeError" = "Fehler beim Dekodieren der Antwort: %@";
+"failedEncodeCredentials" = "Fehler beim Kodieren der Anmeldedaten";
+"failedEncodeLogin" = "Fehler beim Kodieren der Login-Daten";
+"notificationError" = "Fehler beim Senden der Benachrichtigung: %@";
+
+// MARK: - Notifications
+"notificationTitle" = "%@";
+"notificationServiceUp" = "✅ Service ist verfügbar";
+"notificationServiceDown" = "❌ Service ist nicht verfügbar";
+
+// MARK: - Misc
+"uptimePercentage" = "%.2f%%";
+"certificateExpiryDays" = "Zertifikat läuft in %d Tagen ab";
