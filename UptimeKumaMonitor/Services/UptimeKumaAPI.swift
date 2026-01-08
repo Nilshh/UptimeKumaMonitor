@@ -1,187 +1,187 @@
 import Foundation
 import Combine
 
+struct StatusPageResponse: Codable {
+    let ok: Bool
+    let monitors: [Monitor]?
+}
+
 class UptimeKumaAPI: ObservableObject {
     @Published var monitors: [Monitor] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var lastUpdateTime: Date?
-    
+    @Published var connectionMode: ConnectionMode = .statusPage
+
     var baseURL: String {
         didSet {
             UserDefaults.standard.set(baseURL, forKey: "uptimeKumaURL")
         }
     }
-    
+
+    var statusPageSlug: String {
+        didSet {
+            UserDefaults.standard.set(statusPageSlug, forKey: "uptimeKumaStatusPageSlug")
+        }
+    }
+
     var username: String {
         didSet {
             UserDefaults.standard.set(username, forKey: "uptimeKumaUsername")
         }
     }
-    
+
     var password: String {
         didSet {
             UserDefaults.standard.set(password, forKey: "uptimeKumaPassword")
         }
     }
-    
+
+    private var socketService: UptimeKumaSocketService?
     private var refreshTimer: Timer?
-    
-    init(baseURL: String = "", username: String = "", password: String = "") {
+    private var cancellables: Set<AnyCancellable> = []
+
+    init(
+        baseURL: String = "",
+        statusPageSlug: String = "",
+        username: String = "",
+        password: String = "",
+        connectionMode: ConnectionMode = .statusPage
+    ) {
         self.baseURL = baseURL
+        self.statusPageSlug = statusPageSlug
         self.username = username
         self.password = password
+        self.connectionMode = connectionMode
         loadFromUserDefaults()
     }
-    
-    // MARK: - API Methods
-    
+
     func login() async {
         DispatchQueue.main.async {
             self.isLoading = true
             self.errorMessage = nil
         }
-        
-        guard let url = URL(string: "\(baseURL)/api/entry/login") else {
-            DispatchQueue.main.async {
-                self.errorMessage = "Invalid URL format"
-                self.isLoading = false
-            }
-            return
-        }
-        
-        let credentials = "\(username):\(password)"
-        guard let credentialData = credentials.data(using: .utf8)?.base64EncodedString() else {
-            DispatchQueue.main.async {
-                self.errorMessage = "Failed to encode credentials"
-                self.isLoading = false
-            }
-            return
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Basic \(credentialData)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let loginPayload: [String: String] = [
-            "username": username,
-            "password": password
-        ]
-        
-        do {
-            request.httpBody = try JSONEncoder().encode(loginPayload)
-        } catch {
-            DispatchQueue.main.async {
-                self.errorMessage = "Failed to encode login data"
-                self.isLoading = false
-            }
-            return
-        }
-        
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw URLError(.badServerResponse)
-            }
-            
-            if (200...299).contains(httpResponse.statusCode) {
-                await fetchMonitors()
-                startAutoRefresh()
-            } else {
-                DispatchQueue.main.async {
-                    self.errorMessage = "Authentication failed (Status: \(httpResponse.statusCode))"
-                    self.isLoading = false
-                }
-            }
-        } catch {
-            DispatchQueue.main.async {
-                self.errorMessage = "Login error: \(error.localizedDescription)"
-                self.isLoading = false
-            }
+
+        switch connectionMode {
+        case .statusPage:
+            await fetchViaStatusPage()
+        case .socketIO:
+            connectViaSocketIO()
         }
     }
-    
-    func fetchMonitors() async {
-        DispatchQueue.main.async {
-            self.isLoading = true
-            self.errorMessage = nil
-        }
-        
-        guard let url = URL(string: "\(baseURL)/api/monitor") else {
+
+    // MARK: - Status Page Mode
+
+    private func fetchViaStatusPage() async {
+        let normalizedURL = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let urlString = "\(normalizedURL)/api/status-page/\(statusPageSlug)"
+
+        guard let url = URL(string: urlString) else {
             DispatchQueue.main.async {
-                self.errorMessage = "Invalid URL"
+                self.errorMessage = "Invalid Status Page URL"
                 self.isLoading = false
             }
             return
         }
-        
+
         do {
             let (data, response) = try await URLSession.shared.data(from: url)
-            
+
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw URLError(.badServerResponse)
             }
-            
+
             guard (200...299).contains(httpResponse.statusCode) else {
-                throw NSError(domain: "HTTP", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP Status Code: \(httpResponse.statusCode)"])
+                throw NSError(
+                    domain: "HTTP",
+                    code: httpResponse.statusCode,
+                    userInfo: [NSLocalizedDescriptionKey: "Status Code: \(httpResponse.statusCode)"]
+                )
             }
-            
-            let response_dict = try JSONDecoder().decode([String: Monitor].self, from: data)
-            
+
+            let decoded = try JSONDecoder().decode(StatusPageResponse.self, from: data)
+
             DispatchQueue.main.async {
-                self.monitors = Array(response_dict.values).sorted { $0.name < $1.name }
+                self.monitors = (decoded.monitors ?? []).sorted { $0.name < $1.name }
                 self.lastUpdateTime = Date()
                 self.isLoading = false
-                self.saveToUserDefaults()
+                self.startAutoRefresh()
             }
         } catch {
             DispatchQueue.main.async {
-                self.errorMessage = "Failed to fetch monitors: \(error.localizedDescription)"
+                self.errorMessage = "Failed: \(error.localizedDescription)"
                 self.isLoading = false
             }
         }
     }
-    
-    func getMonitorStatus(id: Int) -> Double? {
-        monitors.first(where: { $0.id == id })?.uptime
+
+    // MARK: - Socket.io Mode
+
+    private func connectViaSocketIO() {
+        socketService = UptimeKumaSocketService(
+            baseURL: baseURL,
+            username: username,
+            password: password
+        )
+
+        socketService?.$monitors
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] monitors in
+                self?.monitors = monitors
+                if !monitors.isEmpty {
+                    self?.isLoading = false
+                }
+            }
+            .store(in: &cancellables)
+
+        socketService?.$errorMessage
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] error in
+                self?.errorMessage = error
+                self?.isLoading = false
+            }
+            .store(in: &cancellables)
+
+        socketService?.connect()
     }
-    
+
+    // MARK: - Auto-Refresh
+
     func startAutoRefresh(interval: TimeInterval = 60) {
         stopAutoRefresh()
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            Task {
-                await self?.fetchMonitors()
+        if connectionMode == .statusPage {
+            refreshTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+                Task {
+                    await self?.fetchViaStatusPage()
+                }
             }
         }
     }
-    
+
     func stopAutoRefresh() {
         refreshTimer?.invalidate()
         refreshTimer = nil
     }
-    
-    // MARK: - Persistence
-    
-    private func saveToUserDefaults() {
-        if let encoded = try? JSONEncoder().encode(monitors) {
-            UserDefaults.standard.set(encoded, forKey: "cachedMonitors")
-        }
+
+    func disconnect() {
+        socketService?.disconnect()
+        stopAutoRefresh()
     }
-    
+
+    // MARK: - Persistence
+
     private func loadFromUserDefaults() {
         baseURL = UserDefaults.standard.string(forKey: "uptimeKumaURL") ?? ""
+        statusPageSlug = UserDefaults.standard.string(forKey: "uptimeKumaStatusPageSlug") ?? ""
         username = UserDefaults.standard.string(forKey: "uptimeKumaUsername") ?? ""
         password = UserDefaults.standard.string(forKey: "uptimeKumaPassword") ?? ""
-        
-        if let cachedData = UserDefaults.standard.data(forKey: "cachedMonitors"),
-           let cached = try? JSONDecoder().decode([Monitor].self, from: cachedData) {
-            monitors = cached
+        if let modeRaw = UserDefaults.standard.string(forKey: "uptimeKumaConnectionMode"),
+           let mode = ConnectionMode(rawValue: modeRaw) {
+            connectionMode = mode
         }
     }
-    
+
     deinit {
-        stopAutoRefresh()
+        disconnect()
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-struct Monitor: Identifiable, Codable, Equatable {
+struct Monitor: Identifiable, Codable {
     let id: Int
     let name: String
     let description: String?
@@ -19,19 +19,19 @@ struct Monitor: Identifiable, Codable, Equatable {
         case lastCheck = "last_check"
         case certificateExpiryDays = "cert_expiry_days"
     }
-    
+
     var isUp: Bool {
         status.lowercased() == "up"
     }
-    
+
     var statusColor: String {
         isUp ? "green" : "red"
     }
-    
+
     var uptimePercentage: String {
         String(format: "%.2f%%", uptime)
     }
-    
+
     var lastCheckDate: Date? {
         guard let lastCheck = lastCheck else { return nil }
         return Date(timeIntervalSince1970: TimeInterval(lastCheck) / 1000)

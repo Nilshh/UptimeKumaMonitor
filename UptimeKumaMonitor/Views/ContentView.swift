@@ -4,68 +4,70 @@ struct ContentView: View {
     @StateObject private var apiClient = UptimeKumaAPI()
     @State private var showSettings = false
     @State private var isConnected = false
-    
+
     var body: some View {
-        ZStack {
-            if isConnected && !apiClient.monitors.isEmpty {
-                NavigationView {
-                    List {
-                        Section(header: Text("Monitors")) {
-                            ForEach(apiClient.monitors) { monitor in
-                                NavigationLink(destination: MonitorDetailView(monitor: monitor)) {
-                                    MonitorCard(monitor: monitor)
-                                }
-                            }
+        NavigationView {
+            Group {
+                if apiClient.monitors.isEmpty && !apiClient.isLoading {
+                    VStack(spacing: 20) {
+                        Text("Keine Monitore geladen")
+                            .font(.headline)
+                        Button("Einstellungen öffnen") {
+                            showSettings = true
                         }
-                        
-                        if let lastUpdate = apiClient.lastUpdateTime {
-                            Section(header: Text("Status")) {
-                                HStack {
-                                    Text("Last updated:")
-                                    Spacer()
-                                    Text(lastUpdate.formatted(date: .omitted, time: .standard))
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        }
+                        .buttonStyle(.bordered)
                     }
-                    .navigationTitle("Uptime Kuma")
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            HStack(spacing: 16) {
-                                Button(action: {
-                                    Task {
-                                        await apiClient.fetchMonitors()
-                                    }
-                                }) {
-                                    Image(systemName: "arrow.clockwise")
-                                }
-                                
-                                Button(action: { showSettings = true }) {
-                                    Image(systemName: "gear")
-                                }
+                } else {
+                    List(apiClient.monitors) { monitor in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(monitor.name)
+                                    .font(.headline)
+                                Spacer()
+                                Circle()
+                                    .fill(Color(monitor.statusColor))
+                                    .frame(width: 12, height: 12)
+                            }
+
+                            if let url = monitor.url {
+                                Text(url)
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+
+                            HStack {
+                                Text("Uptime: \(monitor.uptimePercentage)")
+                                    .font(.caption)
+                                Spacer()
+                                Text(monitor.status.uppercased())
+                                    .font(.caption2)
+                                    .foregroundColor(Color(monitor.statusColor))
                             }
                         }
+                        .padding(.vertical, 8)
                     }
                 }
-            } else {
+            }
+            .navigationTitle("Uptime Kuma")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showSettings = true }) {
+                        Image(systemName: "gear")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if apiClient.isLoading {
+                        ProgressView()
+                    }
+                }
+            }
+            .sheet(isPresented: $showSettings) {
                 SettingsView(
                     apiClient: apiClient,
                     isConnected: $isConnected,
                     showSettings: $showSettings
                 )
             }
-        }
-        .sheet(isPresented: $showSettings) {
-            SettingsView(
-                apiClient: apiClient,
-                isConnected: $isConnected,
-                showSettings: $showSettings
-            )
-        }
-        .onChange(of: apiClient.monitors) { monitors in
-            NotificationManager.shared.checkAndNotifyStatusChanges(monitors: monitors)
         }
     }
 }

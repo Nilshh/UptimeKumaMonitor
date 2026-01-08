@@ -1,0 +1,6 @@
+framework module Pods_UptimeKumaMonitor {
+  umbrella header "Pods-UptimeKumaMonitor-umbrella.h"
+
+  export *
+  module * { export * }
+}
