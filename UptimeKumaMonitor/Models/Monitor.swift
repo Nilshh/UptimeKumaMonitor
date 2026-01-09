@@ -1,6 +1,6 @@
 import Foundation
 
-struct Monitor: Identifiable, Codable {
+struct Monitor: Identifiable, Codable, Equatable {
     let id: Int
     let name: String
     let description: String?
@@ -9,56 +9,72 @@ struct Monitor: Identifiable, Codable {
     let method: String?
     let body: String?
     let headers: String?
-    let uptime: Double
-    let status: String
-    let lastCheck: Int64?
+    var uptime: Double
+    var status: String
+    let lastCheck: Date?
     let certificateExpiryDays: Int?
+    var isMaintenance: Bool = false  // Neu hinzugefügt
     
     enum CodingKeys: String, CodingKey {
-        case id, name, description, type, url, method, body, headers, uptime, status
-        case lastCheck = "last_check"
-        case certificateExpiryDays = "cert_expiry_days"
-    }
-    
-    var isUp: Bool {
-        status.lowercased() == "up"
-    }
-    
-    var isMaintenance: Bool {
-        status.lowercased() == "maintenance"
+        case id, name, description, type, url, method, body, headers
+        case uptime, status, lastCheck, certificateExpiryDays, isMaintenance
     }
     
     var statusColor: String {
-        isUp ? "green" : "red"
+        if isMaintenance {
+            return "maintenance"
+        }
+        
+        switch status.lowercased() {
+        case "up":
+            return "up"
+        case "down":
+            return "down"
+        case "maintenance":
+            return "maintenance"
+        default:
+            return "unknown"
+        }
     }
     
-    // Lokalisierter Status-Text
-    var statusDisplayText: String {
+    var statusText: String {
         if isMaintenance {
             return "Wartung"
         }
-        return isUp ? "Online" : "Offline"
-    }
-    
-    // Farbe basierend auf Status
-    var displayColor: String {
-        if isMaintenance {
-            return "orange"
+        
+        switch status.lowercased() {
+        case "up":
+            return "Online"
+        case "down":
+            return "Offline"
+        case "maintenance":
+            return "Wartung"
+        default:
+            return "Unbekannt"
         }
-        return isUp ? "green" : "red"
     }
     
-    var uptimePercentage: String {
-        String(format: "%.2f%%", uptime)
+    init(id: Int, name: String, description: String? = nil, type: String, url: String? = nil,
+         method: String? = nil, body: String? = nil, headers: String? = nil,
+         uptime: Double = 0.0, status: String = "unknown", lastCheck: Date? = nil,
+         certificateExpiryDays: Int? = nil, isMaintenance: Bool = false) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.type = type
+        self.url = url
+        self.method = method
+        self.body = body
+        self.headers = headers
+        self.uptime = uptime
+        self.status = status
+        self.lastCheck = lastCheck
+        self.certificateExpiryDays = certificateExpiryDays
+        self.isMaintenance = isMaintenance
     }
-    
-    // Verfügbarkeit mit Label
-    var uptimeDisplay: String {
-        "Verfügbarkeit (24h): \(uptimePercentage)"
-    }
-    
-    var lastCheckDate: Date? {
-        guard let lastCheck = lastCheck else { return nil }
-        return Date(timeIntervalSince1970: TimeInterval(lastCheck) / 1000)
-    }
+}
+
+enum ConnectionMode: String, Codable {
+    case statusPage = "Status Page"
+    case socketIO = "Socket.IO"
 }

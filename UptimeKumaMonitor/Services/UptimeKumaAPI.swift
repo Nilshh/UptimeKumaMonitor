@@ -293,7 +293,6 @@ class UptimeKumaAPI: ObservableObject {
 }
 
 // MARK: - Heartbeat Models
-
 struct HeartbeatResponse: Codable {
     let heartbeatList: [String: [Heartbeat]]
     let uptimeList: [String: Double]
@@ -305,7 +304,7 @@ struct HeartbeatResponse: Codable {
 }
 
 struct Heartbeat: Codable {
-    let status: Int  // 1 = up, 0 = down
-    let time: String  // Format: "2026-01-09 07:12:26.500"
-    let msg: String?  // Optional
+    let status: Int // 1 = up, 0 = down
+    let time: String // Format: "2026-01-09 07:12:26.500"
+    let msg: String? // Optional
 }
