@@ -7,7 +7,7 @@ struct StatusPageAPIResponse: Codable {
 }
 
 struct StatusPageConfig: Codable {
-    let id: Int
+    let id: Int?  // ✅ GEÄNDERT: Optional gemacht
     let slug: String
     let title: String
     let description: String?
@@ -36,7 +36,7 @@ struct StatusPageMonitor: Codable {
     let description: String?
     let type: String
     let url: String?
-    let maintenance: Bool?  // Di   eses Feld ist wichtig!
+    let maintenance: Bool? // Dieses Feld ist wichtig!
     
     func toMonitor() -> Monitor {
         // Wenn maintenance true ist, setzen wir isMaintenance auf true
