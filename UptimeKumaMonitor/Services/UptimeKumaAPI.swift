@@ -120,7 +120,7 @@ class UptimeKumaAPI: ObservableObject {
                 print("  📦 Group: \(group.name) - \(group.monitorList.count) monitors")
                 for spMonitor in group.monitorList {
                     let monitor = spMonitor.toMonitor()
-                    print("    → Monitor: \(monitor.name), maintenance: \(spMonitor.maintenance ?? false), status: \(monitor.status)")
+                    print("   → Monitor: \(monitor.name), maintenance: \(spMonitor.maintenance ?? false), status: \(monitor.status)")
                     allMonitors.append(monitor)
                 }
             }
@@ -180,7 +180,7 @@ class UptimeKumaAPI: ObservableObject {
             for (index, monitor) in updatedMonitors.enumerated() {
                 let monitorIdStr = String(monitor.id)
                 
-                // Wartungsmodus beibehalten, wenn bereits gesetzt
+                // ✅ FIX: Wartungsmodus beibehalten!
                 let isInMaintenance = monitor.isMaintenance
                 
                 // Heartbeats holen
@@ -206,6 +206,7 @@ class UptimeKumaAPI: ObservableObject {
                     
                     print("  ✅ Monitor \(monitor.id) (\(monitor.name)): status=\(newStatus), uptime=\(String(format: "%.2f", uptime))%, isMaintenance=\(isInMaintenance)")
                     
+                    // ✅ FIX: isMaintenance beim Update mit übergeben!
                     let updatedMonitor = Monitor(
                         id: monitor.id,
                         name: monitor.name,
@@ -218,7 +219,8 @@ class UptimeKumaAPI: ObservableObject {
                         uptime: uptime,
                         status: newStatus,
                         lastCheck: nil,
-                        certificateExpiryDays: nil
+                        certificateExpiryDays: nil,
+                        isMaintenance: isInMaintenance  // ← HIER WAR DAS PROBLEM!
                     )
                     
                     updatedMonitors[index] = updatedMonitor
