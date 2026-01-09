@@ -66,7 +66,7 @@ struct MonitorCard: View {
         headers: nil,
         uptime: 99.95,
         status: "up",
-        lastCheck: Int64(Date().timeIntervalSince1970 * 1000),
+        lastCheck: Date(),
         certificateExpiryDays: nil
     )
     

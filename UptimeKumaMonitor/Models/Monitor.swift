@@ -54,6 +54,16 @@ struct Monitor: Identifiable, Codable, Equatable {
         }
     }
     
+    // Füge diese computed property hinzu:
+    var isUp: Bool {
+        status.lowercased() == "up" && !isMaintenance
+    }
+    
+    // Füge diese computed property für formatierte Uptime hinzu:
+    var uptimePercentage: String {
+        return String(format: "%.2f%%", uptime)
+    }
+    
     init(id: Int, name: String, description: String? = nil, type: String, url: String? = nil,
          method: String? = nil, body: String? = nil, headers: String? = nil,
          uptime: Double = 0.0, status: String = "unknown", lastCheck: Date? = nil,
