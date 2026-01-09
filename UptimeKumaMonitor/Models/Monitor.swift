@@ -25,6 +25,7 @@ struct Monitor: Identifiable, Codable {
     }
 
     var statusColor: String {
+        // Rückgabe als String für SwiftUI Color-Namen
         isUp ? "green" : "red"
     }
 

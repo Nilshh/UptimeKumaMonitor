@@ -4,7 +4,7 @@ struct ContentView: View {
     @StateObject private var apiClient = UptimeKumaAPI()
     @State private var showSettings = false
     @State private var isConnected = false
-
+    
     var body: some View {
         NavigationView {
             Group {
@@ -12,6 +12,7 @@ struct ContentView: View {
                     VStack(spacing: 20) {
                         Text("Keine Monitore geladen")
                             .font(.headline)
+                        
                         Button("Einstellungen öffnen") {
                             showSettings = true
                         }
@@ -23,25 +24,29 @@ struct ContentView: View {
                             HStack {
                                 Text(monitor.name)
                                     .font(.headline)
+                                
                                 Spacer()
+                                
                                 Circle()
-                                    .fill(Color(monitor.statusColor))
+                                    .fill(monitor.isUp ? Color.green : Color.red)
                                     .frame(width: 12, height: 12)
                             }
-
+                            
                             if let url = monitor.url {
                                 Text(url)
                                     .font(.caption)
                                     .foregroundColor(.gray)
                             }
-
+                            
                             HStack {
                                 Text("Uptime: \(monitor.uptimePercentage)")
                                     .font(.caption)
+                                
                                 Spacer()
+                                
                                 Text(monitor.status.uppercased())
                                     .font(.caption2)
-                                    .foregroundColor(Color(monitor.statusColor))
+                                    .foregroundColor(monitor.isUp ? .green : .red)
                             }
                         }
                         .padding(.vertical, 8)
@@ -55,6 +60,7 @@ struct ContentView: View {
                         Image(systemName: "gear")
                     }
                 }
+                
                 ToolbarItem(placement: .navigationBarLeading) {
                     if apiClient.isLoading {
                         ProgressView()
