@@ -172,53 +172,58 @@ class UptimeKumaAPI: ObservableObject {
             let heartbeatResponse = try decoder.decode(HeartbeatResponse.self, from: data)
             print("✅ Heartbeat data received")
             
-            DispatchQueue.main.async {
-                for (index, monitor) in self.monitors.enumerated() {
-                    let monitorIdStr = String(monitor.id)
-                    
-                    // Heartbeats holen
-                    if let heartbeats = heartbeatResponse.heartbeatList[monitorIdStr],
-                       let latestHeartbeat = heartbeats.first {
-                        
-                        // Uptime aus uptimeList holen (Format: "1_24" = Monitor 1, letzte 24h)
-                        var uptime = 0.0
-                        for (key, value) in heartbeatResponse.uptimeList {
-                            if key.starts(with: "\(monitorIdStr)_") {
-                                uptime = value * 100.0  // Konvertiere 0-1 zu 0-100%
-                                break
-                            }
-                        }
-                        
-                        // Status bestimmen (Wartung hat Priorität)
-                        let newStatus: String
-                        if monitor.isMaintenance {
-                            newStatus = "maintenance"
-                        } else {
-                            newStatus = latestHeartbeat.status == 1 ? "up" : "down"
-                        }
-                        
-                        print("   ✅ Monitor \(monitor.id): status=\(newStatus), uptime=\(String(format: "%.2f", uptime))%")
-                        
-                        let updatedMonitor = Monitor(
-                            id: monitor.id,
-                            name: monitor.name,
-                            description: monitor.description,
-                            type: monitor.type,
-                            url: monitor.url,
-                            method: monitor.method,
-                            body: monitor.body,
-                            headers: monitor.headers,
-                            uptime: uptime,
-                            status: newStatus,
-                            lastCheck: nil,
-                            certificateExpiryDays: nil
-                        )
-                        
-                        self.monitors[index] = updatedMonitor
-                    }
-                }
+            // WICHTIG: Neues Array erstellen statt direkt zu mutieren
+            var updatedMonitors = self.monitors
+            
+            for (index, monitor) in updatedMonitors.enumerated() {
+                let monitorIdStr = String(monitor.id)
                 
-                print("✅ Heartbeat update complete")
+                // Heartbeats holen
+                if let heartbeats = heartbeatResponse.heartbeatList[monitorIdStr],
+                   let latestHeartbeat = heartbeats.first {
+                    
+                    // Uptime aus uptimeList holen
+                    var uptime = 0.0
+                    for (key, value) in heartbeatResponse.uptimeList {
+                        if key.starts(with: "\(monitorIdStr)_") {
+                            uptime = value * 100.0
+                            break
+                        }
+                    }
+                    
+                    // Status bestimmen
+                    let newStatus: String
+                    if monitor.isMaintenance {
+                        newStatus = "maintenance"
+                    } else {
+                        newStatus = latestHeartbeat.status == 1 ? "up" : "down"
+                    }
+                    
+                    print("   ✅ Monitor \(monitor.id): status=\(newStatus), uptime=\(String(format: "%.2f", uptime))%")
+                    
+                    let updatedMonitor = Monitor(
+                        id: monitor.id,
+                        name: monitor.name,
+                        description: monitor.description,
+                        type: monitor.type,
+                        url: monitor.url,
+                        method: monitor.method,
+                        body: monitor.body,
+                        headers: monitor.headers,
+                        uptime: uptime,
+                        status: newStatus,
+                        lastCheck: nil,
+                        certificateExpiryDays: nil
+                    )
+                    
+                    updatedMonitors[index] = updatedMonitor
+                }
+            }
+            
+            // Komplettes Array neu zuweisen -> triggert SwiftUI Update
+            DispatchQueue.main.async {
+                self.monitors = updatedMonitors
+                print("✅ Heartbeat update complete - UI should refresh now")
             }
             
         } catch {
