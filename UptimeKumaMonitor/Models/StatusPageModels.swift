@@ -46,6 +46,9 @@ struct StatusPageMonitor: Codable {
         // Nur im Wartungsmodus setzen wir direkt "maintenance"
         let monitorStatus = isInMaintenance ? "maintenance" : "unknown"
         
+        // 🔍 DEBUG: Zum Testen hinzufügen
+        print(" 🔍 DEBUG toMonitor: name=\(name), maintenance=\(maintenance ?? false), isMaintenance=\(isInMaintenance), status=\(monitorStatus)")
+        
         return Monitor(
             id: id,
             name: name,
