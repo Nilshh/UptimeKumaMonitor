@@ -85,7 +85,8 @@ struct MonitorRowView: View {
                         .fill(statusColor)
                         .frame(width: 10, height: 10)
                     
-                    Text(monitor.statusDisplayText)
+                    // FEHLER BEHOBEN: statusDisplayText → statusText
+                    Text(monitor.statusText)
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundColor(statusColor)
@@ -112,7 +113,8 @@ struct MonitorRowView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
-                Text(monitor.uptimeDisplay)
+                // FEHLER BEHOBEN: uptimeDisplay → uptimePercentage
+                Text(monitor.uptimePercentage)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

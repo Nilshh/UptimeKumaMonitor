@@ -64,7 +64,8 @@ struct MonitorDetailView: View {
                 }
             }
             
-            if let lastCheck = monitor.lastCheckDate {
+            // FEHLER 1 BEHOBEN: lastCheckDate → lastCheck
+            if let lastCheck = monitor.lastCheck {
                 Section(header: Text("Letzte Prüfung")) {
                     HStack {
                         Text("Zeitstempel")
@@ -81,6 +82,7 @@ struct MonitorDetailView: View {
 }
 
 #Preview {
+    // FEHLER 2 & 3 BEHOBEN: Int64 → Date()
     let sampleMonitor = Monitor(
         id: 1,
         name: "API Service",
@@ -92,7 +94,7 @@ struct MonitorDetailView: View {
         headers: nil,
         uptime: 99.95,
         status: "up",
-        lastCheck: Int64(Date().timeIntervalSince1970 * 1000),
+        lastCheck: Date(),
         certificateExpiryDays: 45
     )
     
