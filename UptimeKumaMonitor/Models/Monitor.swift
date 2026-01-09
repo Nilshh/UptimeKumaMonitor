@@ -23,14 +23,38 @@ struct Monitor: Identifiable, Codable {
     var isUp: Bool {
         status.lowercased() == "up"
     }
+    
+    var isMaintenance: Bool {
+        status.lowercased() == "maintenance"
+    }
 
     var statusColor: String {
-        // Rückgabe als String für SwiftUI Color-Namen
         isUp ? "green" : "red"
+    }
+    
+    // Lokalisierter Status-Text
+    var statusDisplayText: String {
+        if isMaintenance {
+            return "Wartung"
+        }
+        return isUp ? "Online" : "Offline"
+    }
+    
+    // Farbe basierend auf Status
+    var displayColor: String {
+        if isMaintenance {
+            return "orange"
+        }
+        return isUp ? "green" : "red"
     }
 
     var uptimePercentage: String {
         String(format: "%.2f%%", uptime)
+    }
+    
+    // Verfügbarkeit mit Label
+    var uptimeDisplay: String {
+        "Verfügbarkeit (24h): \(uptimePercentage)"
     }
 
     var lastCheckDate: Date? {

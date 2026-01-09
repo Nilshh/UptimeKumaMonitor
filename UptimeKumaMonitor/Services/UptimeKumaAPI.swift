@@ -97,10 +97,6 @@ class UptimeKumaAPI: ObservableObject {
         do {
             let (data, response) = try await URLSession.shared.data(from: url)
             
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("📥 RAW STATUS PAGE JSON:\n\(jsonString)")
-            }
-            
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw URLError(.badServerResponse)
             }
@@ -119,7 +115,6 @@ class UptimeKumaAPI: ObservableObject {
             let statusPageResponse = try decoder.decode(StatusPageAPIResponse.self, from: data)
             print("✅ Decoded Status Page: \(statusPageResponse.config.title)")
             
-            // Monitore aus allen publicGroupList extrahieren
             var allMonitors: [Monitor] = []
             for group in statusPageResponse.publicGroupList {
                 print("  📦 Group: \(group.name) - \(group.monitorList.count) monitors")
@@ -135,7 +130,6 @@ class UptimeKumaAPI: ObservableObject {
                 self.lastUpdateTime = Date()
                 self.isLoading = false
                 
-                // Heartbeat-Daten nachladen für Live-Status
                 Task {
                     await self.fetchHeartbeatData()
                 }
@@ -158,38 +152,53 @@ class UptimeKumaAPI: ObservableObject {
         
         print("💓 Fetching Heartbeat from:", urlString)
         
-        guard let url = URL(string: urlString) else { return }
+        guard let url = URL(string: urlString) else {
+            print("❌ Invalid heartbeat URL")
+            return
+        }
         
         do {
             let (data, response) = try await URLSession.shared.data(from: url)
             
             guard let httpResponse = response as? HTTPURLResponse,
                   (200...299).contains(httpResponse.statusCode) else {
-                print("⚠️ Heartbeat request failed")
+                print("❌ Heartbeat request failed")
                 return
-            }
-            
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("💓 RAW HEARTBEAT JSON:\n\(jsonString)")
             }
             
             let decoder = JSONDecoder()
             decoder.keyDecodingStrategy = .convertFromSnakeCase
             
-            // Heartbeat Response hat ein Dictionary mit Monitor-IDs als Keys
-            let heartbeatData = try decoder.decode([String: HeartbeatList].self, from: data)
+            let heartbeatResponse = try decoder.decode(HeartbeatResponse.self, from: data)
+            print("✅ Heartbeat data received")
             
-            print("✅ Heartbeat data received for \(heartbeatData.count) monitors")
-            
-            // Update Monitore mit Heartbeat-Daten
             DispatchQueue.main.async {
                 for (index, monitor) in self.monitors.enumerated() {
                     let monitorIdStr = String(monitor.id)
                     
-                    if let heartbeats = heartbeatData[monitorIdStr]?.heartbeatList,
+                    // Heartbeats holen
+                    if let heartbeats = heartbeatResponse.heartbeatList[monitorIdStr],
                        let latestHeartbeat = heartbeats.first {
                         
-                        // Update Monitor mit Live-Daten
+                        // Uptime aus uptimeList holen (Format: "1_24" = Monitor 1, letzte 24h)
+                        var uptime = 0.0
+                        for (key, value) in heartbeatResponse.uptimeList {
+                            if key.starts(with: "\(monitorIdStr)_") {
+                                uptime = value * 100.0  // Konvertiere 0-1 zu 0-100%
+                                break
+                            }
+                        }
+                        
+                        // Status bestimmen (Wartung hat Priorität)
+                        let newStatus: String
+                        if monitor.isMaintenance {
+                            newStatus = "maintenance"
+                        } else {
+                            newStatus = latestHeartbeat.status == 1 ? "up" : "down"
+                        }
+                        
+                        print("   ✅ Monitor \(monitor.id): status=\(newStatus), uptime=\(String(format: "%.2f", uptime))%")
+                        
                         let updatedMonitor = Monitor(
                             id: monitor.id,
                             name: monitor.name,
@@ -199,9 +208,9 @@ class UptimeKumaAPI: ObservableObject {
                             method: monitor.method,
                             body: monitor.body,
                             headers: monitor.headers,
-                            uptime: heartbeatData[monitorIdStr]?.uptime ?? 0.0,
-                            status: latestHeartbeat.status == 1 ? "up" : "down",
-                            lastCheck: Int64(latestHeartbeat.time),
+                            uptime: uptime,
+                            status: newStatus,
+                            lastCheck: nil,
                             certificateExpiryDays: nil
                         )
                         
@@ -209,11 +218,11 @@ class UptimeKumaAPI: ObservableObject {
                     }
                 }
                 
-                print("✅ Monitors updated with live heartbeat data")
+                print("✅ Heartbeat update complete")
             }
             
         } catch {
-            print("⚠️ Heartbeat fetch failed:", error)
+            print("❌ Heartbeat error:", error)
         }
     }
     
@@ -274,26 +283,20 @@ class UptimeKumaAPI: ObservableObject {
 }
 
 // MARK: - Heartbeat Models
-struct HeartbeatList: Codable {
-    let heartbeatList: [Heartbeat]
-    let uptime: Double
+
+struct HeartbeatResponse: Codable {
+    let heartbeatList: [String: [Heartbeat]]
+    let uptimeList: [String: Double]
     
     enum CodingKeys: String, CodingKey {
         case heartbeatList
-        case uptime
+        case uptimeList
     }
 }
 
 struct Heartbeat: Codable {
-    let status: Int  // 1 = up, 0 = down
-    let time: Int
-    let msg: String?
-    let ping: Double?
-    
-    enum CodingKeys: String, CodingKey {
-        case status
-        case time
-        case msg
-        case ping
-    }
+    let status: Int       // 1 = up, 0 = down
+    let time: String      // Format: "2026-01-09 07:12:26.500"
+    let msg: String?      // Optional: kann leer oder null sein
+    let ping: Double?     // Optional: null bei DNS-Checks oder Down-Status
 }
