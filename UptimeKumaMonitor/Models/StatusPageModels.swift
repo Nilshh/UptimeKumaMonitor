@@ -58,7 +58,7 @@ struct StatusPageMonitor: Codable {
             body: nil,
             headers: nil,
             uptime: 0.0,
-            status: "unknown",
+            status: maintenance == true ? "maintenance" : "unknown",
             lastCheck: nil,
             certificateExpiryDays: nil
         )

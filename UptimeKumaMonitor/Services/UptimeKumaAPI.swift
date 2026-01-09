@@ -119,7 +119,9 @@ class UptimeKumaAPI: ObservableObject {
             for group in statusPageResponse.publicGroupList {
                 print("  📦 Group: \(group.name) - \(group.monitorList.count) monitors")
                 for spMonitor in group.monitorList {
-                    allMonitors.append(spMonitor.toMonitor())
+                    let monitor = spMonitor.toMonitor()
+                    print("    → Monitor: \(monitor.name), maintenance: \(spMonitor.maintenance ?? false), status: \(monitor.status)")
+                    allMonitors.append(monitor)
                 }
             }
             
@@ -178,6 +180,9 @@ class UptimeKumaAPI: ObservableObject {
             for (index, monitor) in updatedMonitors.enumerated() {
                 let monitorIdStr = String(monitor.id)
                 
+                // Wartungsmodus beibehalten, wenn bereits gesetzt
+                let isInMaintenance = monitor.isMaintenance
+                
                 // Heartbeats holen
                 if let heartbeats = heartbeatResponse.heartbeatList[monitorIdStr],
                    let latestHeartbeat = heartbeats.first {
@@ -191,15 +196,15 @@ class UptimeKumaAPI: ObservableObject {
                         }
                     }
                     
-                    // Status bestimmen
+                    // Status bestimmen - Wartungsmodus hat Priorität
                     let newStatus: String
-                    if monitor.isMaintenance {
+                    if isInMaintenance {
                         newStatus = "maintenance"
                     } else {
                         newStatus = latestHeartbeat.status == 1 ? "up" : "down"
                     }
                     
-                    print("   ✅ Monitor \(monitor.id): status=\(newStatus), uptime=\(String(format: "%.2f", uptime))%")
+                    print("  ✅ Monitor \(monitor.id) (\(monitor.name)): status=\(newStatus), uptime=\(String(format: "%.2f", uptime))%, isMaintenance=\(isInMaintenance)")
                     
                     let updatedMonitor = Monitor(
                         id: monitor.id,
@@ -300,8 +305,7 @@ struct HeartbeatResponse: Codable {
 }
 
 struct Heartbeat: Codable {
-    let status: Int       // 1 = up, 0 = down
-    let time: String      // Format: "2026-01-09 07:12:26.500"
-    let msg: String?      // Optional: kann leer oder null sein
-    let ping: Double?     // Optional: null bei DNS-Checks oder Down-Status
+    let status: Int  // 1 = up, 0 = down
+    let time: String  // Format: "2026-01-09 07:12:26.500"
+    let msg: String?  // Optional
 }

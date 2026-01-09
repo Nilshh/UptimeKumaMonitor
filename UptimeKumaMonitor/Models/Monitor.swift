@@ -19,7 +19,7 @@ struct Monitor: Identifiable, Codable {
         case lastCheck = "last_check"
         case certificateExpiryDays = "cert_expiry_days"
     }
-
+    
     var isUp: Bool {
         status.lowercased() == "up"
     }
@@ -27,7 +27,7 @@ struct Monitor: Identifiable, Codable {
     var isMaintenance: Bool {
         status.lowercased() == "maintenance"
     }
-
+    
     var statusColor: String {
         isUp ? "green" : "red"
     }
@@ -47,7 +47,7 @@ struct Monitor: Identifiable, Codable {
         }
         return isUp ? "green" : "red"
     }
-
+    
     var uptimePercentage: String {
         String(format: "%.2f%%", uptime)
     }
@@ -56,7 +56,7 @@ struct Monitor: Identifiable, Codable {
     var uptimeDisplay: String {
         "Verfügbarkeit (24h): \(uptimePercentage)"
     }
-
+    
     var lastCheckDate: Date? {
         guard let lastCheck = lastCheck else { return nil }
         return Date(timeIntervalSince1970: TimeInterval(lastCheck) / 1000)
