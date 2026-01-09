@@ -13,7 +13,7 @@ struct Monitor: Identifiable, Codable, Equatable {
     var status: String
     let lastCheck: Date?
     let certificateExpiryDays: Int?
-    var isMaintenance: Bool = false  // Neu hinzugefügt
+    var isMaintenance: Bool = false
     
     enum CodingKeys: String, CodingKey {
         case id, name, description, type, url, method, body, headers
@@ -72,9 +72,4 @@ struct Monitor: Identifiable, Codable, Equatable {
         self.certificateExpiryDays = certificateExpiryDays
         self.isMaintenance = isMaintenance
     }
-}
-
-enum ConnectionMode: String, Codable {
-    case statusPage = "Status Page"
-    case socketIO = "Socket.IO"
 }
